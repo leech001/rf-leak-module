@@ -1,0 +1,38 @@
+name: Development Release
+
+on:
+  push:
+    branches: [ master ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Toolchain
+      run: sudo apt-get -y install gcc-arm-none-eabi
+
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      
+    - name: Build
+      working-directory: ${{runner.workspace}}
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE --target all -- -j 3
+
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: |
+          ${{runner.workspace}}/*.hex
+          ${{runner.workspace}}/*.bin
