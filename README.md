@@ -14,11 +14,11 @@ The radio sensor design itself is on EasyEDA https://easyeda.com/leech001/leakco
 
 Scheme
 
-![shema](https://raw.githubusercontent.com/leech001/LeakControl/master/RF_module/img/sheme.png)
+![shema](https://raw.githubusercontent.com/leech001/rf-leak-module/main/Docs/img/sheme.png)
 
 Board layout
 
-![pcb](https://raw.githubusercontent.com/leech001/LeakControl/master/RF_module/img/pcb.png)
+![pcb](https://raw.githubusercontent.com/leech001/rf-leak-module/main/Docs/img/pcb.png)
 
 
 Gerber file in gerber directory.
@@ -49,5 +49,3 @@ openWritingPipe(pipe1);
 ```
 
 For those who are not strong, there is a ready-made binary that just needs to be write in microcontroler. Binary directory ``bin``.
-
-Translated with https://www.deepl.com/ru/translator (free version)
