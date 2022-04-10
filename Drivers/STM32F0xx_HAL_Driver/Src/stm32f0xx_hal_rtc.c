@@ -681,6 +681,8 @@ __weak void HAL_RTC_MspDeInit(RTC_HandleTypeDef *hrtc)
   * @brief  Set RTC current time.
   * @param  hrtc RTC handle
   * @param  sTime Pointer to Time structure
+  * @note   DayLightSaving and StoreOperation interfaces are deprecated.
+  *         To manage Daylight Saving Time, please use HAL_RTC_DST_xxx functions.
   * @param  Format Specifies the format of the entered parameters.
   *          This parameter can be one of the following values:
   *            @arg RTC_FORMAT_BIN: Binary data format
@@ -763,10 +765,10 @@ HAL_StatusTypeDef HAL_RTC_SetTime(RTC_HandleTypeDef *hrtc, RTC_TimeTypeDef *sTim
     /* Set the RTC_TR register */
     hrtc->Instance->TR = (uint32_t)(tmpreg & RTC_TR_RESERVED_MASK);
 
-    /* Clear the bits to be configured */
+    /* Clear the bits to be configured (Deprecated. Use HAL_RTC_DST_xxx functions instead) */
     hrtc->Instance->CR &= ((uint32_t)~RTC_CR_BKP);
 
-    /* Configure the RTC_CR register */
+    /* Configure the RTC_CR register (Deprecated. Use HAL_RTC_DST_xxx functions instead) */
     hrtc->Instance->CR |= (uint32_t)(sTime->DayLightSaving | sTime->StoreOperation);
 
     /* Exit Initialization mode */
@@ -1002,8 +1004,6 @@ HAL_StatusTypeDef HAL_RTC_GetDate(RTC_HandleTypeDef *hrtc, RTC_DateTypeDef *sDat
 }
 
 /**
-<<<<<<< Updated upstream
-=======
   * @brief  Daylight Saving Time, adda one hour to the calendar in one
   *         single operation without going through the initialization procedure.
   * @param  hrtc pointer to a RTC_HandleTypeDef structure that contains
@@ -1069,7 +1069,6 @@ uint32_t HAL_RTC_DST_ReadStoreOperation(RTC_HandleTypeDef *hrtc)
 }
 
 /**
->>>>>>> Stashed changes
   * @}
   */
 
