@@ -75,6 +75,15 @@
 #endif
 #endif
 
+#if  defined(STM32G030F6P6)
+#define   _EE_SIZE              1024
+#define   _EE_ADDR_INUSE        (((uint32_t)0x08000000) | (_EE_SIZE * _EE_USE_FLASH_PAGE_OR_SECTOR))
+#define   _EE_PAGE_OR_SECTOR    PAGE
+#if (_EE_USE_FLASH_PAGE_OR_SECTOR > 31)
+#error  "Please Enter correct address, maximum is (31)"
+#endif
+#endif
+
 #if defined(STM32F030x8) || defined(STM32F042x8)
 #define   _EE_SIZE              1024
 #define   _EE_ADDR_INUSE        (((uint32_t)0x08000000) | (_EE_SIZE * _EE_USE_FLASH_PAGE_OR_SECTOR))
@@ -189,7 +198,7 @@ bool ee_format(bool keepRamData)
   FLASH_EraseInitTypeDef flashErase;
 #if _EE_PAGE_OR_SECTOR == PAGE
 	flashErase.NbPages = 1;
-  flashErase.PageAddress = _EE_ADDR_INUSE;
+  flashErase.Page = PAGE;
   flashErase.TypeErase = FLASH_TYPEERASE_PAGES;
 #elif _EE_PAGE_OR_SECTOR == SECTOR
   flashErase.NbSectors = 1;
