@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ee.h"
+#include "eeprom_emul_conf.h"
 #include "nrf24l01.h"
 /* USER CODE END Includes */
 
@@ -80,7 +80,7 @@ void SystemClock_Config(void);
   */
 int main(void) {
     /* USER CODE BEGIN 1 */
-
+    EE_Status ee_status = EE_OK;
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -109,7 +109,10 @@ int main(void) {
     __HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
 
     // Init EEPROM emulation
-    ee_init();
+    HAL_FLASH_Unlock();
+//    ee_status = EE_Init(EE_FORCED_ERASE);
+//    if(ee_status != EE_OK) {Error_Handler();}
+    ee_status = EE_WriteVariable32bits(1, 1);
 
     // Run ADC
     HAL_ADCEx_Calibration_Start(&hadc1);
@@ -121,12 +124,12 @@ int main(void) {
     voltage = 3300 * (*vrefint_cal) / HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
 
-    ee_read(0, 1, &battery[0]);
+//    ee_read(0, 1, &battery[0]);
     battery[1] = voltage / 100;
 
     if (water > 200 || battery[1] < battery[0] || battery[1] > (battery[0] + 5)) {
-        ee_format(false);
-        ee_write(0, 1, &battery[1]);
+//        ee_format(false);
+//        ee_write(0, 1, &battery[1]);
         HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
         while (!isChipConnected());
         NRF_Init();
