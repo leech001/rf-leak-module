@@ -31,7 +31,6 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "eeprom_emul.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -65,6 +64,7 @@ void Error_Handler(void);
 #define NRF_CE_GPIO_Port GPIOA
 #define NRF_PWR_Pin GPIO_PIN_12
 #define NRF_PWR_GPIO_Port GPIOA
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
