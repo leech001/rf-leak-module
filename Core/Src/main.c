@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ee.h"
 #include "nrf24l01.h"
 /* USER CODE END Includes */
 
@@ -50,6 +51,9 @@ static uint16_t *vrefint_cal = (uint16_t *)VREFINT_CAL_ADDR;
 
 uint16_t water = 0;
 uint16_t voltage = 0;
+static uint8_t battery[2] = {
+    0,
+};
 uint8_t nrf_data[32] = {
     0,
 };
@@ -110,6 +114,9 @@ int main(void)
   // Clear standby flag
   __HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
 
+  // Init EEPROM emulation
+  ee_init();
+
   // Run ADC
   HAL_ADCEx_Calibration_Start(&hadc1);
   HAL_ADC_Start(&hadc1);
@@ -120,8 +127,13 @@ int main(void)
   voltage = 3000 * (*vrefint_cal) / HAL_ADC_GetValue(&hadc1);
   HAL_ADC_Stop(&hadc1);
 
-  if (water > 200 || voltage < 3000)
+  ee_read(0, 1, &battery[0]);
+  battery[1] = voltage / 100;
+
+  if (water > 300 || battery[1] < battery[0] || battery[1] > (battery[0] + 5))
   {
+    ee_format(false);
+    ee_write(0, 1, &battery[1]);
 
     HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
     while (!isChipConnected())
