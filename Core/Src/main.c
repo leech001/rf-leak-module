@@ -130,7 +130,7 @@ int main(void)
   ee_read(0, 1, &battery[0]);
   battery[1] = voltage / 100;
 
-  if (water > 300 || battery[1] < battery[0] || battery[1] > (battery[0] + 5))
+  if (water > 1000 || battery[1] < battery[0] || battery[1] > (battery[0] + 5))
   {
     ee_format(false);
     ee_write(0, 1, &battery[1]);
