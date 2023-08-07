@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "rtc.h"
 #include "spi.h"
 #include "gpio.h"
@@ -50,6 +51,9 @@ static uint8_t *Unique_ID = (uint8_t *)UID_BASE;
 static uint16_t *vrefint_cal = (uint16_t *)VREFINT_CAL_ADDR;
 
 uint16_t up_count = 0;
+volatile uint16_t adc[2] = {
+	0,
+};
 uint16_t water = 0;
 uint16_t voltage = 0;
 uint8_t nrf_data[32] = {
@@ -105,6 +109,7 @@ int main(void)
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
+	MX_DMA_Init();
 	MX_ADC1_Init();
 	MX_RTC_Init();
 	MX_SPI1_Init();
@@ -116,15 +121,12 @@ int main(void)
 	// Init EEPROM emulation
 	ee_init();
 
-	// Run ADC
+	// ADC
 	HAL_ADCEx_Calibration_Start(&hadc1);
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	water = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	voltage = 3000 * (*vrefint_cal) / HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Stop(&hadc1);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc, 2);
+
+	voltage = VREFINT_CAL_VREF * (*vrefint_cal) / adc[1];
+	water = adc[0];
 
 	ee_read(0, 2, (uint8_t *)&up_count);
 
@@ -236,7 +238,14 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	if (hadc->Instance == ADC1)
+	{
+		HAL_ADC_Stop_DMA(&hadc1);
+		HAL_ADC_Stop(&hadc1);
+	}
+}
 /* USER CODE END 4 */
 
 /**
