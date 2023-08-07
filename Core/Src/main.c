@@ -49,6 +49,7 @@
 static uint8_t *Unique_ID = (uint8_t *)UID_BASE;
 static uint16_t *vrefint_cal = (uint16_t *)VREFINT_CAL_ADDR;
 
+uint16_t up_count = 0;
 uint16_t water = 0;
 uint16_t voltage = 0;
 uint8_t nrf_data[32] = {
@@ -62,10 +63,6 @@ const uint64_t pipe1 = 0xF0F0F0F0A1LL;
 //        const uint64_t pipe3 = 0xF0F0F0F0C1LL;
 //        const uint64_t pipe4 = 0xF0F0F0F0D1LL;
 //        const uint64_t pipe5 = 0xF0F0F0F0E1LL;
-
-static uint8_t data[4] = {
-	0,
-};
 
 /* USER CODE END PV */
 
@@ -129,8 +126,9 @@ int main(void)
 	voltage = 3000 * (*vrefint_cal) / HAL_ADC_GetValue(&hadc1);
 	HAL_ADC_Stop(&hadc1);
 
-	ee_read(0, 4, &data[0]);
-	if (data[0] >= 240)
+	ee_read(0, 2, (uint8_t *)&up_count);
+
+	if (up_count >= 360)
 	{
 		HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
 		while (!isChipConnected())
@@ -149,12 +147,12 @@ int main(void)
 		nrf_data[15] = voltage & 0xff;
 
 		write(&nrf_data, 32);
-		data[0] = 0;
+		up_count = 0;
 	}
 
-	data[0]++;
+	up_count++;
 	ee_format(true);
-	ee_write(0, 4, &data[0]);
+	ee_write(0, 2, (uint8_t *)&up_count);
 
 	if (water > 1000)
 	{
