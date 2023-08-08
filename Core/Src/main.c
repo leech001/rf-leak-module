@@ -26,7 +26,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ee.h"
 #include "nrf24l01.h"
 /* USER CODE END Includes */
 
@@ -73,7 +72,7 @@ const uint64_t pipe1 = 0xF0F0F0F0A1LL;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void NRF_Prepare(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -118,8 +117,8 @@ int main(void)
 	// Clear standby flag
 	__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
 
-	// Init EEPROM emulation
-	ee_init();
+	// Read from backup register up count
+	up_count = HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR0);
 
 	// ADC
 	HAL_ADCEx_Calibration_Start(&hadc1);
@@ -128,51 +127,17 @@ int main(void)
 	voltage = VREFINT_CAL_VREF * (*vrefint_cal) / adc[1];
 	water = adc[0];
 
-	ee_read(0, 2, (uint8_t *)&up_count);
-
 	if (up_count >= 360)
 	{
-		HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
-		while (!isChipConnected())
-			;
-		NRF_Init();
-		setDataRate(RF24_250KBPS);
-		setChannel(76);
-		openWritingPipe(pipe1);
-		maskIRQ(true, true, true);
-
-		// Add message
-		memcpy(nrf_data, Unique_ID, 12);
-		nrf_data[12] = water >> 8;
-		nrf_data[13] = water & 0xff;
-		nrf_data[14] = voltage >> 8;
-		nrf_data[15] = voltage & 0xff;
+		NRF_Prepare();
 
 		write(&nrf_data, 32);
 		up_count = 0;
 	}
 
-	up_count++;
-	ee_format(true);
-	ee_write(0, 2, (uint8_t *)&up_count);
-
 	if (water > 1000)
 	{
-		HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
-		while (!isChipConnected())
-			;
-		NRF_Init();
-		setDataRate(RF24_250KBPS);
-		setChannel(76);
-		openWritingPipe(pipe1);
-		maskIRQ(true, true, true);
-
-		// Add message
-		memcpy(nrf_data, Unique_ID, 12);
-		nrf_data[12] = water >> 8;
-		nrf_data[13] = water & 0xff;
-		nrf_data[14] = voltage >> 8;
-		nrf_data[15] = voltage & 0xff;
+		NRF_Prepare();
 
 		for (uint8_t i = 0; i < 5; i++)
 		{
@@ -181,13 +146,16 @@ int main(void)
 		}
 	}
 
+	up_count++;
+	HAL_PWR_EnableBkUpAccess();
+	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR0, up_count);
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1)
 	{
-
 		HAL_PWR_EnterSTANDBYMode();
 
 		/* USER CODE END WHILE */
@@ -245,6 +213,25 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 		HAL_ADC_Stop_DMA(&hadc1);
 		HAL_ADC_Stop(&hadc1);
 	}
+}
+
+void NRF_Prepare(void)
+{
+	HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
+	while (!isChipConnected())
+		;
+	NRF_Init();
+	setDataRate(RF24_250KBPS);
+	setChannel(76);
+	openWritingPipe(pipe1);
+	maskIRQ(true, true, true);
+
+	// Add message
+	memcpy(nrf_data, Unique_ID, 12);
+	nrf_data[12] = water >> 8;
+	nrf_data[13] = water & 0xff;
+	nrf_data[14] = voltage >> 8;
+	nrf_data[15] = voltage & 0xff;
 }
 /* USER CODE END 4 */
 
