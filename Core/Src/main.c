@@ -135,12 +135,12 @@ int main(void)
 	water = adc[0];
 	voltage = VREFINT_CAL_VREF * (*vrefint_cal) / adc[1];
 
-	if (up_count >= 360)
+	if (up_count == 0 || up_count >= 360)
 	{
 		NRF_Prepare();
 
 		write(&nrf_data, 32);
-		up_count = 0;
+		up_count = 1;
 	}
 
 	if (water > 1000)
