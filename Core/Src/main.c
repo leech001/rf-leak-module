@@ -19,13 +19,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "rtc.h"
 #include "spi.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ee.h"
 #include "nrf24l01.h"
 /* USER CODE END Includes */
 
@@ -50,11 +50,18 @@ static uint8_t *Unique_ID = (uint8_t *)UID_BASE;
 static uint16_t *vrefint_cal = (uint16_t *)VREFINT_CAL_ADDR;
 
 uint16_t up_count = 0;
+volatile uint16_t adc[2] = {
+	0,
+};
+
 uint16_t water = 0;
 uint16_t voltage = 0;
+
 uint8_t nrf_data[32] = {
 	0,
 };
+
+volatile uint8_t flag = 0;
 
 //        === NRF Setup ===
 //        const uint64_t pipe0 = 0x7878787878LL;
@@ -69,7 +76,7 @@ const uint64_t pipe1 = 0xF0F0F0F0A1LL;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void NRF_Prepare(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -105,6 +112,7 @@ int main(void)
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
+	MX_DMA_Init();
 	MX_ADC1_Init();
 	MX_RTC_Init();
 	MX_SPI1_Init();
@@ -113,64 +121,34 @@ int main(void)
 	// Clear standby flag
 	__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
 
-	// Init EEPROM emulation
-	ee_init();
+	// Read from backup register up count
+	up_count = HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR0);
 
-	// Run ADC
+	// ADC
 	HAL_ADCEx_Calibration_Start(&hadc1);
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	water = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	voltage = 3000 * (*vrefint_cal) / HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Stop(&hadc1);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc, 2);
 
-	ee_read(0, 2, (uint8_t *)&up_count);
-
-	if (up_count >= 360)
+	// Wait DMA
+	while (!flag)
 	{
-		HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
-		while (!isChipConnected())
-			;
-		NRF_Init();
-		setDataRate(RF24_250KBPS);
-		setChannel(76);
-		openWritingPipe(pipe1);
-		maskIRQ(true, true, true);
-
-		// Add message
-		memcpy(nrf_data, Unique_ID, 12);
-		nrf_data[12] = water >> 8;
-		nrf_data[13] = water & 0xff;
-		nrf_data[14] = voltage >> 8;
-		nrf_data[15] = voltage & 0xff;
-
-		write(&nrf_data, 32);
-		up_count = 0;
 	}
 
-	up_count++;
-	ee_format(true);
-	ee_write(0, 2, (uint8_t *)&up_count);
+	water = adc[0];
+	voltage = VREFINT_CAL_VREF * (*vrefint_cal) / adc[1];
 
+	// Send a status every 360 min
+	if (up_count == 0 || up_count >= 360)
+	{
+		NRF_Prepare();
+
+		write(&nrf_data, 32);
+		up_count = 1;
+	}
+
+	// Send a notification if the humidity level is above the permissible level 
 	if (water > 1000)
 	{
-		HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
-		while (!isChipConnected())
-			;
-		NRF_Init();
-		setDataRate(RF24_250KBPS);
-		setChannel(76);
-		openWritingPipe(pipe1);
-		maskIRQ(true, true, true);
-
-		// Add message
-		memcpy(nrf_data, Unique_ID, 12);
-		nrf_data[12] = water >> 8;
-		nrf_data[13] = water & 0xff;
-		nrf_data[14] = voltage >> 8;
-		nrf_data[15] = voltage & 0xff;
+		NRF_Prepare();
 
 		for (uint8_t i = 0; i < 5; i++)
 		{
@@ -179,13 +157,16 @@ int main(void)
 		}
 	}
 
+	up_count++;
+	HAL_PWR_EnableBkUpAccess();
+	HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR0, up_count);
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1)
 	{
-
 		HAL_PWR_EnterSTANDBYMode();
 
 		/* USER CODE END WHILE */
@@ -236,7 +217,34 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	if (hadc->Instance == ADC1)
+	{
+		HAL_ADC_Stop_DMA(&hadc1);
+		HAL_ADC_Stop(&hadc1);
+		flag = 1;
+	}
+}
 
+void NRF_Prepare(void)
+{
+	HAL_GPIO_WritePin(NRF_PWR_GPIO_Port, NRF_PWR_Pin, GPIO_PIN_SET);
+	while (!isChipConnected())
+		;
+	NRF_Init();
+	setDataRate(RF24_250KBPS);
+	setChannel(76);
+	openWritingPipe(pipe1);
+	maskIRQ(true, true, true);
+
+	// Add message
+	memcpy(nrf_data, Unique_ID, 12);
+	nrf_data[12] = water >> 8;
+	nrf_data[13] = water & 0xff;
+	nrf_data[14] = voltage >> 8;
+	nrf_data[15] = voltage & 0xff;
+}
 /* USER CODE END 4 */
 
 /**
