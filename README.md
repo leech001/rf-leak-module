@@ -4,6 +4,8 @@ The module is a board based on STM32G030F6P6 microcontroller and NRF24L01 radio 
 The module is designed to detect water leaks and notify the head unit about them.
 This version of the module is powered by the 16340 (CR123) battery which should be enough for 12 months of operation.
 
+![image info](./image/module-3d.png)
+
 The default operation logic of the module is as follows:
 1. Deep sleep for one minute;
 2. Humidity sensor interrogation;
