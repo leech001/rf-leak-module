@@ -53,11 +53,15 @@ uint16_t up_count = 0;
 volatile uint16_t adc[2] = {
 	0,
 };
+
 uint16_t water = 0;
 uint16_t voltage = 0;
+
 uint8_t nrf_data[32] = {
 	0,
 };
+
+volatile uint8_t flag = 0;
 
 //        === NRF Setup ===
 //        const uint64_t pipe0 = 0x7878787878LL;
@@ -124,8 +128,12 @@ int main(void)
 	HAL_ADCEx_Calibration_Start(&hadc1);
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc, 2);
 
-	voltage = VREFINT_CAL_VREF * (*vrefint_cal) / adc[1];
+	while (!flag)
+	{
+	}
+
 	water = adc[0];
+	voltage = VREFINT_CAL_VREF * (*vrefint_cal) / adc[1];
 
 	if (up_count >= 360)
 	{
@@ -212,6 +220,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 	{
 		HAL_ADC_Stop_DMA(&hadc1);
 		HAL_ADC_Stop(&hadc1);
+		flag = 1;
 	}
 }
 
