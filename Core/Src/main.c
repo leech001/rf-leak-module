@@ -128,6 +128,7 @@ int main(void)
 	HAL_ADCEx_Calibration_Start(&hadc1);
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&adc, 2);
 
+	// Wait DMA
 	while (!flag)
 	{
 	}
@@ -135,6 +136,7 @@ int main(void)
 	water = adc[0];
 	voltage = VREFINT_CAL_VREF * (*vrefint_cal) / adc[1];
 
+	// Send a status every 360 min
 	if (up_count == 0 || up_count >= 360)
 	{
 		NRF_Prepare();
@@ -143,6 +145,7 @@ int main(void)
 		up_count = 1;
 	}
 
+	// Send a notification if the humidity level is above the permissible level 
 	if (water > 1000)
 	{
 		NRF_Prepare();
