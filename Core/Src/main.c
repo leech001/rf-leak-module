@@ -145,7 +145,7 @@ int main(void)
 		up_count = 1;
 	}
 
-	// Send a notification if the humidity level is above the permissible level 
+	// Send a notification if the humidity level is above the permissible level
 	if (water > 1000)
 	{
 		NRF_Prepare();
